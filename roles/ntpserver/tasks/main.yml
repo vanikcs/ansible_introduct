@@ -1,0 +1,12 @@
+ - name: Install NTP
+   apt:
+     pkg:
+       - chrony
+ - name: Copy configuration
+   copy:
+     src: /opt/Ansible_Learn/ntp_SRV.conf
+     dest: /etc/chrony/chrony.conf
+ - name: Service Restart
+   service:
+     name: chronyd
+     state: restarted

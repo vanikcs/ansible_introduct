@@ -1,0 +1,13 @@
+config setup
+conn RTR-R-to-RTR-L
+	type=tunnel
+	auto=start
+	keyexchange=ikev2
+	authby=secret
+	left=10.5.5.1
+	leftsubnet=192.168.100.0/24
+	right=10.5.5.2
+	rightsubnet=172.16.100.0/24
+	ike=aes256-sha1-modp1024!
+	esp=aes256-sha1!
+	keyingtries=%forever

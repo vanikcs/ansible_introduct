@@ -1,0 +1,6 @@
+---
+- hosts: routers
+  tasks:
+    - name: Create file in autousers home directory
+      become: yes
+      command: touch ~/testfile

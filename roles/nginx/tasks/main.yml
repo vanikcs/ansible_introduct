@@ -1,0 +1,6 @@
+---
+ - name:
+   apt:
+     pkg:
+       - nginx
+       - haproxy

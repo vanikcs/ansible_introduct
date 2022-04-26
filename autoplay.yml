@@ -1,0 +1,170 @@
+---
+- hosts: all
+  tasks:
+    - name: Install Chrony
+      apt:
+        pkg:
+          - chrony
+    - name: Set Timezone
+      community.general.timezone:
+        name: Europe/Moscow
+    - name: Set Primary ntp server
+      lineinfile:
+        path: /etc/chrony/chrony.conf
+        regexp: '^pool'
+        line: pool 192.168.100.200 iburst
+    - name: Restart Chrony
+      service:
+        name: chrony
+        state: restarted
+- hosts: routers
+  tasks: 
+    - name: Install package
+      apt:
+        pkg:
+          - cowsay
+          - strongswan
+          - cifs-utils
+- hosts: localhost
+  roles:
+    - dnsserver
+    - ntpserver
+
+
+- hosts: 192.168.100.254
+  vars_files:
+    - ./vars.yml
+  tasks: 
+    - name: Check Hostname
+      command: hostname
+      register: hostname_rtr_l
+    - name: Set Hostname
+      hostname:
+        name: "{{ router_left }}"
+      when: hostname_rtr_l.stdout != "{{ router_left }}"
+    - name: After change hostname reboot machine
+      reboot:
+      when: hostname_rtr_l.stdout != "{{ router_left }}"
+    - name: Set nftables rules
+      template:
+        src: ./nftables_RTR-L.conf
+        dest: /etc/nftables.conf
+      notify:
+          - restart
+    - name: Copy GRE-script
+      copy:
+        src: ./gre_RTRL.up
+        dest: /etc/gre_RTRL.up
+        mode: "0755"
+
+
+
+    - name: Launch script for GRE
+      command: /bin/bash /etc/gre_RTRL.up
+      ignore_errors: true
+
+    - name: Set change in crontab
+      lineinfile:
+        path: /etc/crontab
+        line: "@reboot root /etc/gre_RTRL.up"
+        insertafter: EOF
+    - name: Check crontan correct
+      fetch:
+        src: "/etc/crontab"
+        dest: "crontab_RTR-L"
+
+
+
+    - name: R Copy ipsec.conf
+      copy:
+        src: ./ipsec/ipsec-RTRR
+        dest: /etc/ipsec.conf
+        mode: "0644"
+    - name: R Copy ipsec.secrets
+      copy:
+        src: ./ipsec/ipsec.secrets
+        dest: /etc/ipsec.secrets
+        mode: "0600"
+    - name: R Restart strongswan
+      service:
+        name: strongswan-starter
+        enabled: yes
+        state: restarted
+
+   
+  handlers:
+  - name: restart
+    service:
+        name: nftables
+        state: restarted
+
+
+- hosts: 5.5.5.100
+  vars_files:
+    - ./vars.yml
+  tasks: 
+    - name: Check Hostname
+      command: hostname
+      register: hostname_rtr_r
+    - name: Set Hostname
+      hostname:
+        name: "{{ router_right }}"
+      when: hostname_rtr_r.stdout != "{{ router_right }}"
+    - name: After change hostname reboot machine
+      reboot:
+      when: hostname_rtr_r.stdout != "{{ router_right }}"
+    - name: Set nftables rules
+      template:
+        src: ./nftables_RTR-R.conf
+        dest: /etc/nftables.conf
+    - name: Add file
+      blockinfile:
+        path: /etc/gre_RTRR.up
+        block: |           
+           ip tunnel add tun1 mode gre local 5.5.5.100 remote 4.4.4.100 ttl 64
+           ip link set tun1 up
+           ip addr add 10.5.5.2/30 dev tun1
+           ip route add 192.168.100.0/24 via 10.5.5.1
+        state: present
+        create: yes
+    - name: Launch GRE
+      command: /bin/bash /etc/gre_RTRR.up
+      ignore_errors: true
+    - name: Configure crontab
+      lineinfile:
+        path: /etc/crontab
+        line: "@reboot root /etc/gre_RTRR.up"
+        insertafter: EOF
+
+
+    - name: L Copy ipsec.conf
+      copy:
+        src: ./ipsec/ipsec-RTRL
+        dest: /etc/ipsec.conf
+        mode: "0644"
+    - name: L Copy ipsec.secrets
+      copy:
+        src: ./ipsec/ipsec.secrets
+        dest: /etc/ipsec.secrets
+        mode: "0600"
+    - name: L Restart strongswan
+      service:
+        name: strongswan-starter
+        enabled: yes
+        state: restarted
+
+
+- hosts: 192.168.100.100
+  vars_files:
+    - ./vars.yml
+  tasks: 
+    - name: Check Hostname
+      command: hostname
+      register: hostname_web_l
+    - name: Set Hostname
+      hostname:
+        name: "{{ left_web_server }}"
+      when: hostname_web_l.stdout != "{{ left_web_server }}"
+    - name: After change hostname reboot machine
+      reboot:
+      when: hostname_web_l.stdout != "{{ left_web_server }}"

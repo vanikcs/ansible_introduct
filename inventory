@@ -1,0 +1,14 @@
+[routers]
+192.168.100.254
+5.5.5.100
+
+[webservers]
+172.16.100.100
+192.168.100.100
+
+[server]
+192.168.100.200
+
+[webservers:vars]
+ansible_ssh_user = root
+ansible_ssh_pass = toor

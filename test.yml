@@ -1,0 +1,10 @@
+---
+- hosts: 172.16.100.100,192.168.100.100
+  pre_tasks:
+    - debug:
+       msg: The
+  roles:
+    - nginx
+  post_tasks:
+     - debug:
+        msg: Good Bye!!!
